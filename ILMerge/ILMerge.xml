@@ -1,0 +1,507 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>ILMerge</name>
+    </assembly>
+    <members>
+        <member name="T:AssemblyResolving.AssemblyResolver">
+            <summary>
+            AssemblyResolver is a class that is used for CCI-based applications.
+            When a CCI-based application asks for an assembly to be loaded, CCI
+            first looks in any cache that it has access to (e.g., that was handed
+            to it in a call to GetAssembly). If it cannot find it, then if a 
+            resolver has been registered, then it calls the resolver to locate
+            the assembly.
+            If the resolver does not return it, CCI then searches in several
+            standard places (the current working directory, the GAC, etc.).
+            </summary>
+        </member>
+        <member name="M:AssemblyResolving.AssemblyResolver.#ctor">
+            <summary>
+            This object is used to locate an assembly when it is needed to be loaded
+            (i.e., not found in the cache).
+            </summary>
+        </member>
+        <member name="M:AssemblyResolving.AssemblyResolver.#ctor(System.String)">
+            <summary>
+            This object is used to locate an assembly when it is needed to be loaded
+            (i.e., not found in the cache).
+            </summary>
+            <param name="InputDirectory">Specifies the primary directory in which to look for assemblies.</param>
+        </member>
+        <member name="M:AssemblyResolving.AssemblyResolver.#ctor(System.Collections.IDictionary)">
+            <summary>
+            This object is used to locate an assembly when it is needed to be loaded
+            (i.e., not found in the cache).
+            </summary>
+            <param name="AssemblyCache">A map from assembly names (strings) to AssemblyNode. First
+            place that is looked in for assemblies to be loaded.</param>
+        </member>
+        <member name="P:AssemblyResolving.AssemblyResolver.AssemblyCache">
+            <summary>
+            A map from string names to AssemblyNode. It is used to locate
+            metadata references.
+            </summary>
+        </member>
+        <member name="P:AssemblyResolving.AssemblyResolver.SearchDirectories">
+            <summary>
+            The set of directory paths that will be searched for assemblies by the 
+            assembly resolver.
+            </summary>
+        </member>
+        <member name="P:AssemblyResolving.AssemblyResolver.InputDirectory">
+            <summary>
+            The first directory in which an assembly is searched for if it is not found in the cache.
+            </summary>
+        </member>
+        <member name="P:AssemblyResolving.AssemblyResolver.LogFile">
+            <summary>
+            Place to send output log messages. Needs to be a full path, e.g., "c:\tmp\foo.log".
+            Can be set at most once.
+            (If the property Log is true and the LogFile is null, then Console.Out is written to.)
+            </summary>
+        </member>
+        <member name="P:AssemblyResolving.AssemblyResolver.Log">
+            <summary>
+            Controls whether output log messages are produced during resolving. (default: true)
+            Can be set arbitrarily.
+            (If the property Log is true and the LogFile is null, then Console.Out is written to.)
+            </summary>
+        </member>
+        <member name="P:AssemblyResolving.AssemblyResolver.UseGlobalCache">
+            <summary>
+            Controls whether CCI should use its global cache when loading assemblies. (default: true)
+            </summary>
+        </member>
+        <member name="P:AssemblyResolving.AssemblyResolver.DebugInfo">
+            <summary>
+            Controls whether CCI should read in debug info when loading assemblies. (default: true)
+            </summary>
+        </member>
+        <member name="P:AssemblyResolving.AssemblyResolver.PreserveShortBranches">
+            <summary>
+            Controls whether CCI should preserve short branches. (default: false)
+            </summary>
+        </member>
+        <member name="M:AssemblyResolving.AssemblyResolver.Resolve(System.Compiler.AssemblyReference,System.Compiler.Module)">
+            <summary>
+            This method is installed as hook so that each assembly that is loaded uses it to resolve
+            any assembly references.
+            </summary>
+            <param name="assemblyReference">The reference that must be chased down to load.</param>
+            <param name="referencingModule">The assembly that contains the reference.</param>
+            <returns></returns>
+        </member>
+        <member name="T:ILMerging.ILMerge">
+            <summary>
+            ILMerge is a class containing members and methods for
+            merging multiple .NET assemblies into a single assembly.
+            </summary>
+        </member>
+        <member name="F:ILMerging.ILMerge.clrVersion">
+            <summary>
+            clrVersion is the string that is needed by SetTargetPlatform
+            to indicate which version of the CLR the output should run under.
+            </summary>
+        </member>
+        <member name="F:ILMerging.ILMerge.clrDir">
+            <summary>
+            clrDir is the string containing the path to the directory
+            the Framework assemblies can be found in for the version
+            indicated by clrVersion. It is also passed to SetTargetPlatform.
+            </summary>
+        </member>
+        <member name="F:ILMerging.ILMerge.targetPlatformSpecified">
+            <summary>
+            Records whether the /targetplatform option was given by the user on 
+            the command line. It isn't currently settable via the object model
+            since in that case a user just calls SetTargetPlatform directly.
+            </summary>
+        </member>
+        <member name="F:ILMerging.ILMerge.typesToAllowDuplicatesOf">
+            <summary>
+            Used to represent the set of names of types to allow duplicates of.
+            This was first implemented to allow assemblies obfuscated by Dotfuscator
+            to be merged because that tool adds the definition of an attribute to
+            each output assembly. The definitions are all identical and are not referenced
+            from anywhere, so renaming this particular public type doesn't matter.
+            </summary>
+        </member>
+        <member name="F:ILMerging.ILMerge.allowAllDuplicates">
+            <summary>
+            If this is true, then all public types are allowed to have duplicates; the duplicates
+            are just renamed.
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.UsageString">
+            <summary>
+            The string shown to the user when there is an error detected in the command line.
+            </summary>
+        </member>
+        <member name="M:ILMerging.ILMerge.AdjustAccessibilityAndPossiblyMarkWithComVisibleAttribute(System.Compiler.TypeNode,System.Compiler.AttributeNode)">
+            <summary>
+            Call this method once for each namespace (top-level) type in an assembly!
+            Do not call it on nested types!
+            
+            There is a very special case where in one assembly a type C declares a method m
+            that is FamilyOrAssembly and in another assembly, a type D extends C and overrides
+            the method as just Family and now both C and D are going to be in the merged assembly.
+            Since C.m was exported as just Family, it worked when D was in a different assembly,
+            but when they live in the same assembly, it means that D.m is less accessible than
+            the method it is overriding and the type fails to load.
+            </summary>
+            <param name="t">
+            Namespace type to recursively visit.
+            </param>
+            <param name="assemblyComVisibleAttribute">
+            When this is non-null then the type t comes from an assembly whose assembly-level
+            specification for the ComVisible attribute is not the same as the assembly-level
+            attribute that will be put onto the target assembly. In that case, if it is public,
+            then the type needs to be marked with the attribute so it doesn't inherit the
+            target assembly's assembly-level specification.
+            But do this only if the type is not explicitly marked with the attribute.
+            If it does then it doesn't inherit the assembly-level specification anyway.
+            This needs to be done only at the namespace type level: this method will make
+            sure that all of them are marked so then any nested types inherit those markings.
+            </param>
+        </member>
+        <member name="M:ILMerging.ILMerge.CreateDuplicator(System.Compiler.Module)">
+            <summary>
+            Provides a way for subtypes to create their own Duplicator to use for
+            the merging. When not overridden, the duplicator is the standard one.
+            </summary>
+            <param name="module">Top level module for this duplicator to copy types into.</param>
+            <returns>The duplicator to use for visiting the source modules.</returns>
+        </member>
+        <member name="M:ILMerging.ILMerge.CreateDuplicator(System.Compiler.Module,System.Compiler.TypeNode)">
+            <summary>
+            Provides a way for subtypes to create their own Duplicator to use for
+            the merging. When not overridden, the duplicator is the standard one.
+            </summary>
+            <param name="module">Top level module for this duplicator to copy types into.</param>
+            <param name="typeNode"></param>
+            <returns>The duplicator to use for visiting the source modules.</returns>
+        </member>
+        <member name="M:ILMerging.ILMerge.CheckUsage(System.String[])">
+            <summary>
+            Returns true iff there is a violation of the command line arguments.
+            Currently, it doesn't check for much.
+            </summary>
+            <param name="args">Exactly the same array as passed to Main.</param>
+            <returns>true iff command line args are incorrect (in some simple cases)</returns>
+        </member>
+        <member name="M:ILMerging.ILMerge.ValidateOptions">
+            <summary>
+            Checks certain arguments and their combinations to detect proper usage.
+            Writes to Console for each violation.
+            </summary>
+            <returns>True iff no error is detected.</returns>
+        </member>
+        <member name="M:ILMerging.ILMerge.ProcessCommandLineOptions(System.String[])">
+            <summary>
+            Sets internal state to reflect arguments specified by user on command line.
+            </summary>
+            <param name="args"></param>
+        </member>
+        <member name="M:ILMerging.ILMerge.WriteToLog(System.String,System.Object[])">
+            <summary>
+            Called throughout to write log messages.
+            Does nothing if "log" is not true.
+            If "logFile" is not set, then it writes to the Console, otherwise
+            it writes to the stream opened on "logFile".
+            </summary>
+            <param name="s">String to write to log. May have placeholder args in it.</param>
+            <param name="args">Zero or more arguments to fill the placeholder args in s.</param>
+        </member>
+        <member name="M:ILMerging.ILMerge.ScanAssemblies(System.Compiler.Duplicator,System.Compiler.AssemblyNodeList)">
+            <summary>
+            Using the duplicator provided, calls FindTypesToBeDuplicated on each type
+            in each assembly.
+            </summary>
+            <param name="d">The duplicator to use for the scan.</param>
+            <param name="assems">A list of assembies that are visited in
+            turn.
+            The Types property of each one is passed to d's FindTypesToBeDuplicated
+            method.</param>
+        </member>
+        <member name="T:ILMerging.ILMerge.Kind">
+            <summary>
+            This enumeration contains values that are used to specify the kind
+            of assembly that the target assembly should be. The options are
+            console application, class library, windows application, or a
+            "wild card" that matches whatever the primary assembly is.
+            </summary>
+        </member>
+        <member name="F:ILMerging.ILMerge.Kind.Dll">
+            <summary>
+            Represents a class library.
+            </summary>
+        </member>
+        <member name="F:ILMerging.ILMerge.Kind.Exe">
+            <summary>
+            Represents a console application.
+            </summary>
+        </member>
+        <member name="F:ILMerging.ILMerge.Kind.WinExe">
+            <summary>
+            Represents a Windows application.
+            </summary>
+        </member>
+        <member name="F:ILMerging.ILMerge.Kind.SameAsPrimaryAssembly">
+            <summary>
+            Represents a "don't care" value.
+            </summary>
+        </member>
+        <member name="M:ILMerging.ILMerge.AllowDuplicateType(System.String)">
+            <summary>
+            Adds a type name to the set of public types for which duplicates will be allowed.
+            (Private types are always allowed to have duplicates.) All duplicates are renamed
+            so for a public type, that means clients must be aware of the new name. This functionality
+            is mainly to allow obfuscated assemblies to be merged since each obfuscated assembly defines
+            the same attribute. Otherwise, duplicate type names cause an error.
+            </summary>
+            <param name="typeName">The string name of the type that duplicates should be ignored for.
+            When it is null, that means allow all duplicate public types.</param>
+        </member>
+        <member name="P:ILMerging.ILMerge.AllowMultipleAssemblyLevelAttributes">
+            <summary>
+            Controls whether multiple instances of assembly-level attributes are allowed in the target
+            assembly. (Multiple instances are allowed only for attributes that are defined to allow
+            multiple instances. All others either overwrite any previous instance found in the target assembly
+            or else are ignored, depending on the setting of KeepFirstOfMultipleAssemblyLevelAttributes.
+            Unless CopyAttributes is true, it is ignored. 
+            (default: false)
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.KeepFirstOfMultipleAssemblyLevelAttributes">
+            <summary>
+            Controls whether first occurrence wins or last occurrence wins when multiple instances
+            of assembly-level attributes are found. Ignored unless CopyAttributes is true.
+            (default: false)
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.AllowZeroPeKind">
+            <summary>
+            Controls whether the absence of the ILOnly value in an assembly's PeKind flag is tolerated.
+            (default: false)
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.AllowWildCards">
+            <summary>
+            Controls whether wild cards are allowed in input file names.
+            (default: false)
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.AttributeFile">
+            <summary>
+            If this is set before calling Merge, then it specifies the path and filename to an
+            attribute assembly, an assembly that will be used to get all of the assembly-level
+            attributes such as Culture, Version, etc. It will also be used to get the Win32 Resources
+            from. It is mutually exclusive with the CopyAttributes property. When it is not specified,
+            then the Win32 Resources from the primary assembly are copied over into the target assembly.
+            If not a full path, e.g., "c:\tmp\foo.log", then the current directory is used.
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.Closed">
+            <summary>
+            When this is set before calling Merge, then the "transitive closure"
+            of the input assemblies is computed and added to the list of input
+            assemblies. An assembly is considered part of the transitive closure
+            if it is referenced, either directly or indirectly, from one of the
+            originally specified input assemblies and it has an external reference
+            to one of the input assemblies, or one of the assemblies that has such
+            a reference. Complicated, but that is life...
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.CopyAttributes">
+            <summary>
+            When this is set before calling Merge, then the assembly level attributes
+            of each input assembly are copied over into the target assembly.
+            Any duplicate attribute overwrites a previously copied attribute.
+            This option is mutually exclusive with specifying an attribute assembly (see
+            the property AttributeFile). When an attribute assembly is specified,
+            then no assembly-level attributes are copied over from the input
+            assemblies.
+            Default: false
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.DebugInfo">
+            <summary>
+            Controls whether debug info is preserved, if present. (default: true)
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.DelaySign">
+            <summary>
+            Controls whether the specified key file or container is to be used as containing
+            only a public key and so delay-signing the target assembly.
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.ExcludeFile">
+            <summary>
+            When the property Internalize is true, then this property is consulted.
+            Its value should be the file name of a file containing those types
+            which are to have their visibility unchanged.
+            Needs to be a full path, e.g., "c:\tmp\foo.txt".
+            The file should contain one type name per line. Matching will be done using
+            regular expressions.  Any type not matching will be public in the resulting assembly.
+            Setting it sets Internalize to true.
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.ExternalVisitor">
+            <summary>
+            <para>After the merging is finished, if this property has been
+            set, then the object it refers to will be invoked to visit
+            the target assembly before it is written out.
+            </para>
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.FileAlignment">
+            <summary>
+            Sets the file alignment used in the target assembly. The setter
+            will set the value to the largest power of two that is no greater
+            than the value supplied and that is at least 512.
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.Internalize">
+            <summary>
+            Controls whether all types in input assemblies, other than the primary assembly,
+            are to be made non-public. (default: false)
+            If the property Internalize is true then types can be listed in the ExcludeFile;
+            those will remain with their visibility unchanged.
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.KeyFile">
+            <summary>
+            Path to the key file that will be used to strongly-name the target assembly.
+            Needs to be a full path, e.g., "c:\tmp\foo.snk".
+            It should be the same key that was used to sign the primary assembly,
+            if the primary assembly has a strong name.
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.KeyContainer">
+            <summary>
+            Name of the key container that will be used to strongly-name the target assembly.
+            Needs to be the name of a machine-level RSA CSP container which has had an SNK blob imported.
+            Visual Studio handles this when it remembers PFX passwords and passes the container name to MSBuild.
+            It should be the same key that was used to sign the primary assembly,
+            if the primary assembly has a strong name.
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.Log">
+            <summary>
+            Controls whether output log messages are produced during weaving. (default: false)
+            (If the property Log is true and the LogFile is null, then Console.Out is written to.)
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.LogFile">
+            <summary>
+            Place to send output log messages. Needs to be a full path, e.g., "c:\tmp\foo.log".
+            (If the property Log is true and the LogFile is null, then Console.Out is written to.)
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.OutputFile">
+            <summary>
+            Path (including file name) that the target assembly will be written to.
+            If not a full path, e.g., "c:\tmp\foo.log", then the current directory is used.
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.PublicKeyTokens">
+            <summary>
+            Controls whether external assembly references are written with the full key (false) or public key token (true).
+            (default: true)
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.PreserveShortBranches">
+            <summary>
+            Controls whether short branches in the IL should be preserved or not.
+            (default: false)
+            </summary>
+        </member>
+        <member name="M:ILMerging.ILMerge.SetInputAssemblies(System.String[])">
+            <summary>
+            <para>Pass this method a list of the assemblies that are to be merged
+            (organized as an array of strings, one entry per directory).
+            </para>
+            </summary>
+        </member>
+        <member name="M:ILMerging.ILMerge.SetSearchDirectories(System.String[])">
+            <summary>
+            <para>Pass this method a set of directories (organized as an array of strings,
+            one entry per directory) that will be used to search for input assemblies.
+            It is also used as the set of directories to use for assembly reference
+            resolving. The latter usage is not needed if all referenced directories are 
+            either in the GAC or in the directory in which the input is located
+            (or, more generally, in the directory in which the referencing assembly is located).
+            </para>
+            </summary>
+        </member>
+        <member name="M:ILMerging.ILMerge.SetTargetPlatform(System.String,System.String)">
+            <summary>
+            <para> Needed only if the target platform differs from that in which
+            ILMerge is running. When a directory is specified, a check *is* made
+            that the directory actually exists and that mscorlib.dll is indeed in that
+            directory. Exception thrown when something goes wrong with a hopefully
+            informative message describing the problem. When a directory is not specified,
+            an exception is thrown if the framework directory is not found.
+            </para>
+            </summary>
+            <param name="platform">Must be one of: "V1", "V1.1", "V2", "postV1.1".
+            (The "V" is case insensitive and is also optional.)
+            (The "." can also be an underscore character: "_".)</param>
+            <param name="dir">Directory in which to find mscorlib.dll.
+            When null (or the empty string), the directory is probed for and
+            doesn't need to be suplied. But if it isn't found, then an exception
+            will be thrown.</param>
+        </member>
+        <member name="P:ILMerging.ILMerge.StrongNameLost">
+            <summary>
+            <para>After the merging is finished, this property reflects whether
+            the input had a strong name, but since no key file was specified,
+            the output has had its public key removed and does *not* have a
+            strong name.
+            </para>
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.TargetKind">
+            <summary>
+            Controls what kind of binary the target assembly is. (default: same as primary assembly)
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.UnionMerge">
+            <summary>
+            Controls whether the source assemblies are merged into a union set or not.
+            (default: false)
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.Version">
+            <summary>
+            <para>When this property has a non-null value, then it will
+            cause the target assembly to have its Version changed to whatever
+            this property has been set to. (default: null)
+            </para>
+            </summary>
+        </member>
+        <member name="P:ILMerging.ILMerge.XmlDocumentation">
+            <summary>
+            Controls whether XML documentation files are merged.
+            (default: false)
+            </summary>
+        </member>
+        <member name="M:ILMerging.ILMerge.Merge">
+            <summary>
+            Given a set of IL assemblies, merge them into a single IL assembly.
+            All inter-assembly references in the set are resolved to be
+            intra-assembly references in the merged assembly.
+            If calling this directly, need to set the InputAssemblies
+            and the OutputFile (at least) before calling this method.
+            </summary>
+        </member>
+        <member name="M:ILMerging.ILMerge.Main(System.String[])">
+            <summary>
+            Given a set of IL assemblies, merge them into a single IL assembly.
+            All inter-assembly references in the set are resolved to be
+            intra-assembly references in the merged assembly.
+            </summary>
+        </member>
+    </members>
+</doc>
