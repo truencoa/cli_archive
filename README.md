@@ -1,10 +1,12 @@
 # TrueNCOA Command Line Interface (CLI)
+The CLI allows you to process files in an automated fashion directly from your computer without needing to manually upload them to the TrueNCOA application.  You can also use this in the sandbox environment when testing your integration with the TrueNCOA application.
+> NOTE:  we only support the Windows platform running .NET Framework 4+ (sorry)
 
 ## Overview
 
-For the latest documentation on the API or to customize this application, see TrueNCOA
+For the latest documentation on the API or to customize this application, see TrueNCOA http://truencoa.com/api/
 
-The CLI accepts the following arguments as: truencoa.exe filename id key [url] [email address]
+The CLI accepts the following arguments as: truencoa.exe filename id key [url] [download]
 * filename (required) - the fully qualified path and name to the input file (CSV, tab-delimited)
 * id (required) - the API id or account user name/email address
 * key (required) - the API key or account password
