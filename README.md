@@ -17,15 +17,18 @@ The CLI accepts the following arguments as: truencoa.exe filename id key [url] [
 
 ## Input File
 The input file (filename) needs to have the following fields defined:
-* individual_id
-* individual_full_name
-* individual_first_name
-* individual_last_name
-* address_line_1
-* address_line_2
-* address_city
-* address_state
-* address_postal_code
+* individual_id - your unique id
+* individual_first_name - first name
+* individual_last_name - last name
+* address_line_1 - address line 1 or full street address
+* address_line_2 - address line 2 or blank
+* address_city - city name
+* address_state_code - state code, like 'IL'
+* address_postal_code - five-digit or full postal code
+
+Optionally, you can include the following:
+* individual_full_name - only one full name
+* address_country_code - blank or 'US'
 
 ## Payment
 You will automatically be charged if the "download" parameter is set to true. If you do not have any credits available, the export file will not be downloaded. You can login to the app at the URL you submitted the file to in order to view your credits.
