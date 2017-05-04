@@ -28,8 +28,8 @@ The input file (filename) needs to have the following fields defined:
 * address_state_code - state code, like 'IL'
 * address_postal_code - five-digit or full postal code
 
-Optionally, you can include the following:
-* individual_full_name - only one full name
+Optionally, you can include the following fields:
+* individual_full_name - only one full name, do not include individual_first_name and individual_last_name when including this
 * address_country_code - blank or 'US'
 
 ## Payment
