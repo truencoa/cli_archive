@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -20,104 +20,134 @@ namespace truencoa_cli
             int batchsize = 100;
             File file = null;
 
-            if (args.Length < 3) { Console.WriteLine("Missing arguments: filename, id, key"); return; };
-
-            string filename = args[0];
-            string id = args[1];
-            string key = args[2];
-            string url = "https://app.truencoa.com/api/";
-            bool download = false;
-
-            if (args.Length > 3)
+            try
             {
-                if (args[3].Contains("http"))
+                if (args.Length < 3) { Console.WriteLine("Missing arguments: filename, id, key"); return; };
+
+                string filename = args[0];
+                string id = args[1];
+                string key = args[2];
+                string url = "https://app.truencoa.com/api/";
+                bool download = false;
+                string tmpfilename = null;
+
+                if (args.Length > 3)
                 {
-                    url = args[3];
+                    if (args[3].Contains("http"))
+                    {
+                        url = args[3];
+                    }
+                    else
+                    {
+                        Boolean.TryParse(args[3], out download);
+                    }
+                }
+
+                if (args.Length > 4)
+                {
+                    if (!args[4].Contains("http"))
+                    {
+                        Boolean.TryParse(args[4], out download);
+                    }
+                }
+
+                // the filename could be a file and path to upload, or an existing file to process
+                FileInfo fi = new FileInfo(filename);
+                if (fi.Exists == false)
+                {
+                    tmpfilename = filename;
                 }
                 else
                 {
-                    Boolean.TryParse(args[3], out download);
-                }
-            }
+                    // make a random file name
+                    tmpfilename = fi.Name.Replace(System.IO.Path.GetExtension(fi.Name), "") + "_" + DateTime.Now.Ticks;
 
-            if (args.Length > 4)
-            {
-                if (!args[4].Contains("http"))
-                {
-                    Boolean.TryParse(args[4], out download);
-                }
-            }
-
-            FileInfo fi = new FileInfo(filename);
-            if (fi.Exists == false) { Console.WriteLine("Invalid filename"); return; }
-
-            // make a random file name
-            string tmpfilename = fi.Name.Replace(System.IO.Path.GetExtension(fi.Name), "") + "_" + DateTime.Now.Ticks;
-
-            StringBuilder data = new StringBuilder();
-
-            // import records from file
-            using (StreamReader sr = new StreamReader(filename))
-            {
-                string[] headers = sr.ReadLine().Split('\t');
-                int i = 0;
-                while (sr.EndOfStream == false)
-                {
-                    string[] line = sr.ReadLine().Split('\t');
-
-                    int h = 0;
-                    foreach (string header in headers)
+                    // import records from file
+                    StringBuilder data = new StringBuilder();
+                    using (StreamReader sr = new StreamReader(filename))
                     {
-                        data.AppendFormat("{0}={1}&", header, line[h]);
-                        h++;
-                    }
-                    if (i % batchsize == 0 || sr.EndOfStream == true)
-                    {
-                        using (WebClient wc = new WebClient())
+                        string[] headers = sr.ReadLine().Split('\t');
+                        int i = 0;
+                        while (sr.EndOfStream == false)
                         {
-                            //wc.Headers["api_id"] = id;
-                            //wc.Headers["api_key"] = key;
-                            wc.Headers["user_name"] = id;
-                            wc.Headers["password"] = key;
-                            wc.Headers[HttpRequestHeader.ContentType] = "application/x-www-form-urlencoded";
-                            wc.UploadString(url + $"files/{tmpfilename}/records", data.ToString());
-                            data = new StringBuilder();
+                            string[] line = sr.ReadLine().Split('\t');
+
+                            int h = 0;
+                            foreach (string header in headers)
+                            {
+                                data.AppendFormat("{0}={1}&", header, line[h]);
+                                h++;
+                            }
+                            if (i % batchsize == 0 || sr.EndOfStream == true)
+                            {
+                                using (WebClient wc = new WebClient())
+                                {
+                                    //wc.Headers["api_id"] = id;
+                                    //wc.Headers["api_key"] = key;
+                                    wc.Headers["user_name"] = id;
+                                    wc.Headers["password"] = key;
+                                    wc.Headers[HttpRequestHeader.ContentType] = "application/x-www-form-urlencoded";
+                                    wc.UploadString(url + $"files/{tmpfilename}/records", data.ToString());
+                                    data = new StringBuilder();
+                                }
+                            }
+                            i++;
                         }
                     }
-                    i++;
                 }
-            }
 
-            // submit for processing
-            using (WebClient wc = new WebClient())
-            {
-                //wc.Headers["api_id"] = id;
-                //wc.Headers["api_key"] = key;
-                wc.Headers["user_name"] = id;
-                wc.Headers["password"] = key;
-                wc.Headers[HttpRequestHeader.ContentType] = "application/x-www-form-urlencoded";
-                wc.UploadString(url + $"files/{tmpfilename}", "PATCH", "status=submit");
-            }
-
-            // wait for processing to complete
-            bool processing = true;
-            while (processing)
-            {
-                Thread.Sleep(1000);
+                // check to see if the file is ready to process
                 using (WebClient wc = new WebClient())
                 {
                     //wc.Headers["api_id"] = id;
                     //wc.Headers["api_key"] = key;
                     wc.Headers["user_name"] = id;
                     wc.Headers["password"] = key;
-                    string json = wc.DownloadString(url + $"files/{tmpfilename}");
-                    file = new JavaScriptSerializer().Deserialize<File>(json);
-                    processing = (file.Status == "Process" || file.Status == "Processing");
+                    try
+                    {
+                        string json = wc.DownloadString(url + $"files/{tmpfilename}");
+                        file = new JavaScriptSerializer().Deserialize<File>(json);
+                        if (file.Status != "Mapped" && file.RecordCount < 100)
+                        {
+                            Console.WriteLine($"The filename: {tmpfilename} is not in the correct status or does not contain at least 100 records");
+                            return;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Invalid filename: {tmpfilename}");
+                        return;
+                    }
                 }
-            }
 
-            if (download == false)
-            {
+                // submit for processing
+                using (WebClient wc = new WebClient())
+                {
+                    //wc.Headers["api_id"] = id;
+                    //wc.Headers["api_key"] = key;
+                    wc.Headers["user_name"] = id;
+                    wc.Headers["password"] = key;
+                    wc.Headers[HttpRequestHeader.ContentType] = "application/x-www-form-urlencoded";
+                    wc.UploadString(url + $"files/{tmpfilename}", "PATCH", "status=submit");
+                }
+
+                // wait for processing to complete
+                bool processing = true;
+                while (processing)
+                {
+                    Thread.Sleep(1000);
+                    using (WebClient wc = new WebClient())
+                    {
+                        //wc.Headers["api_id"] = id;
+                        //wc.Headers["api_key"] = key;
+                        wc.Headers["user_name"] = id;
+                        wc.Headers["password"] = key;
+                        string json = wc.DownloadString(url + $"files/{tmpfilename}");
+                        file = new JavaScriptSerializer().Deserialize<File>(json);
+                        processing = (file.Status == "Process" || file.Status == "Processing");
+                    }
+                }
+
                 using (WebClient wc = new WebClient())
                 {
                     //wc.Headers["api_id"] = id;
@@ -126,72 +156,77 @@ namespace truencoa_cli
                     wc.Headers["password"] = key;
                     string json = wc.DownloadString(url + $"files/{tmpfilename}/report");
                 }
-            }
-            string exportfileid = null;
-            // submit for exporting
-            using (WebClient wc = new WebClient())
-            {
-                //wc.Headers["api_id"] = id;
-                //wc.Headers["api_key"] = key;
-                wc.Headers["user_name"] = id;
-                wc.Headers["password"] = key;
-                wc.Headers[HttpRequestHeader.ContentType] = "application/x-www-form-urlencoded";
-                string json = wc.UploadString(url + $"files/{tmpfilename}", "PATCH", "status=export");
-                file = new JavaScriptSerializer().Deserialize<File>(json);
-                exportfileid = file.Id;
-            }
 
-            // wait for exporting to complete
-            bool exporting = true;
-            while (exporting)
-            {
-                Thread.Sleep(1000);
+                string exportfileid = null;
+                // submit for exporting
                 using (WebClient wc = new WebClient())
                 {
                     //wc.Headers["api_id"] = id;
                     //wc.Headers["api_key"] = key;
                     wc.Headers["user_name"] = id;
                     wc.Headers["password"] = key;
-                    string json = wc.DownloadString(url + $"files/{exportfileid}");
+                    wc.Headers[HttpRequestHeader.ContentType] = "application/x-www-form-urlencoded";
+                    string json = wc.UploadString(url + $"files/{tmpfilename}", "PATCH", "status=export");
                     file = new JavaScriptSerializer().Deserialize<File>(json);
-                    exporting = (file.Status == "Export" || file.Status == "Exporting");
+                    exportfileid = file.Id;
+                }
+
+                // wait for exporting to complete
+                bool exporting = true;
+                while (exporting)
+                {
+                    Thread.Sleep(1000);
+                    using (WebClient wc = new WebClient())
+                    {
+                        //wc.Headers["api_id"] = id;
+                        //wc.Headers["api_key"] = key;
+                        wc.Headers["user_name"] = id;
+                        wc.Headers["password"] = key;
+                        string json = wc.DownloadString(url + $"files/{exportfileid}");
+                        file = new JavaScriptSerializer().Deserialize<File>(json);
+                        exporting = (file.Status == "Export" || file.Status == "Exporting");
+                    }
+                }
+
+                if (download)
+                {
+                    DataTable records = null;
+                    using (WebClient wc = new WebClient())
+                    {
+                        //wc.Headers["api_id"] = id;
+                        //wc.Headers["api_key"] = key;
+                        wc.Headers["user_name"] = id;
+                        wc.Headers["password"] = key;
+                        //string json = wc.DownloadString(url + $"files/{exportfileid}/records?size={file.RecordCount}&start=1&end={file.RecordCount}");
+                        string json = wc.DownloadString(url + $"files/{exportfileid}/records");
+                        file = new JavaScriptSerializer().Deserialize<File>(json);
+                        // see comment below (public class File), file.Records is not being deserialized by default
+                        var obj = JObject.Parse(json);
+                        var recordsjson = (string)obj["Records"].ToString();
+                        records = (DataTable)JsonConvert.DeserializeObject(recordsjson, (typeof(DataTable)));
+                    }
+                    StringBuilder sb = new StringBuilder();
+                    IEnumerable<string> columnNames = records.Columns.Cast<DataColumn>().Select(column => column.ColumnName);
+                    sb.AppendLine(string.Join(",", columnNames));
+                    foreach (DataRow row in records.Rows)
+                    {
+                        IEnumerable<string> fields = row.ItemArray.Select(field => string.Concat("\"", field.ToString().Replace("\"", "\"\""), "\""));
+                        sb.AppendLine(string.Join(",", fields));
+                    }
+                    if (System.IO.File.Exists($"{filename}.export.csv"))
+                    {
+                        System.IO.File.Delete($"{filename}.export.csv");
+                    }
+                    System.IO.File.WriteAllText($"{filename}.export.csv", sb.ToString());
                 }
             }
-
-            if (download)
+            catch (Exception ex)
             {
-                DataTable records = null;
-                using (WebClient wc = new WebClient())
-                {
-                    //wc.Headers["api_id"] = id;
-                    //wc.Headers["api_key"] = key;
-                    wc.Headers["user_name"] = id;
-                    wc.Headers["password"] = key;
-                    string json = wc.DownloadString(url + $"files/{exportfileid}/records?size={file.RecordCount}&start=1&end={file.RecordCount}");
-                    file = new JavaScriptSerializer().Deserialize<File>(json);
-                    // see comment below (public class File), file.Records is not being deserialized by default
-                    var obj = JObject.Parse(json);
-                    var recordsjson = (string)obj["Records"].ToString();
-                    records = (DataTable)JsonConvert.DeserializeObject(recordsjson, (typeof(DataTable)));
-                }
-                StringBuilder sb = new StringBuilder();
-                IEnumerable<string> columnNames = records.Columns.Cast<DataColumn>().Select(column => column.ColumnName);
-                sb.AppendLine(string.Join(",", columnNames));
-                foreach (DataRow row in records.Rows)
-                {
-                    IEnumerable<string> fields = row.ItemArray.Select(field => string.Concat("\"", field.ToString().Replace("\"", "\"\""), "\""));
-                    sb.AppendLine(string.Join(",", fields));
-                }
-                if (System.IO.File.Exists($"{filename}.export.csv"))
-                {
-                    System.IO.File.Delete($"{filename}.export.csv");
-                }
-                System.IO.File.WriteAllText($"{filename}.export.csv", sb.ToString());
+                Console.WriteLine("An error occured while processing your file:");
+                Console.WriteLine(((System.Net.HttpWebResponse)((System.Net.WebException)ex).Response).StatusDescription);
             }
-
         }
     }
-
 
     public class File
     {
