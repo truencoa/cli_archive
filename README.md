@@ -24,7 +24,7 @@ The input file (filename) needs to have the following fields defined:
 * individual_last_name - last name
 * address_line_1 - address line 1 or full street address
 * address_line_2 - address line 2 or blank
-* address_city - city name
+* address_city_name - city name
 * address_state_code - state code, like 'IL'
 * address_postal_code - five-digit or full postal code
 
