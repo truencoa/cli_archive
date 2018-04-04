@@ -11,7 +11,7 @@ The CLI accepts the following arguments as: truencoa.exe filename id key [url] [
 * id (required) - the API id or account user name/email address
 * key (required) - the API key or account password
 * url (optional) - the API endpoint URL - defaults to https://app.truencoa.com/api (production) or http://app.testing.truencoa.com/api (testing)
-* download (optional) - automatically download the processed file - defaults to false, the system will automatically send the user the NCOA report and no file will be downloaded, when set to true, the file will be downloaded and you will be charged automatically
+* download (optional) - automatically download the processed file - defaults to false, no file will be downloaded, when set to true, the file will be downloaded and you will be charged automatically
 
 `Example: truencoa.exe "d:\myfile.txt" "email@address.com" "Password123$" "http://app.testing.truencoa.com/api/" false`
 
