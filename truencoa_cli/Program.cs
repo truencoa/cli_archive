@@ -144,7 +144,7 @@ namespace truencoa_cli
                         wc.Headers["password"] = key;
                         string json = wc.DownloadString(url + $"files/{tmpfilename}");
                         file = new JavaScriptSerializer().Deserialize<File>(json);
-                        processing = (file.Status == "Process" || file.Status == "Processing");
+                        processing = (file.Status == "Import" || file.Status == "Importing" || file.Status == "Parse" || file.Status == "Parsing" || file.Status == "Report" || file.Status == "Reporting" || file.Status == "Process" || file.Status == "Processing");
                     }
                 }
 
