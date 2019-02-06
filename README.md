@@ -10,10 +10,10 @@ The CLI accepts the following arguments as: truencoa.exe filename id key [url] [
 * filename (required) - the fully qualified path and name to the input file (CSV, tab-delimited)
 * id (required) - the API id or account user name/email address
 * key (required) - the API key or account password
-* url (optional) - the API endpoint URL - defaults to https://app.truencoa.com/api (production) or http://app.testing.truencoa.com/api (testing)
+* url (optional) - the API endpoint URL - defaults to https://app.truencoa.com/api (production) or https://app.testing.truencoa.com/api (testing)
 * download (optional) - automatically download the processed file - defaults to false, no file will be downloaded, when set to true, the file will be downloaded and you will be charged automatically
 
-`Example: truencoa.exe "d:\myfile.txt" "email@address.com" "Password123$" "http://app.testing.truencoa.com/api/" false`
+`Example: truencoa.exe "d:\myfile.txt" "email@address.com" "Password123$" "https://app.testing.truencoa.com/api/" false`
 
 > NOTE: if you're using a batch (BAT) file to automate the process and store the command-line parameters, and your password contains a percent symbol (%), you need to add an additional percent symbol to make it work.
 
