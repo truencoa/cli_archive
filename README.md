@@ -4,7 +4,7 @@ The CLI allows you to process files in an automated fashion directly from your c
 
 ## Overview
 
-For the latest documentation on the API or to customize this application, see TrueNCOA http://truencoa.com/api/
+For the latest documentation on the API or to customize this application, see TrueNCOA https://truencoa.com/api/
 
 The CLI accepts the following arguments as: truencoa.exe filename id key [url] [download]
 * filename (required) - the fully qualified path and name to the input file (CSV, tab-delimited)
