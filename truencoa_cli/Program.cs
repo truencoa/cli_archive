@@ -148,15 +148,6 @@ namespace truencoa_cli
                     }
                 }
 
-                using (WebClient wc = new WebClient())
-                {
-                    //wc.Headers["api_id"] = id;
-                    //wc.Headers["api_key"] = key;
-                    wc.Headers["user_name"] = id;
-                    wc.Headers["password"] = key;
-                    string json = wc.DownloadString(url + $"files/{tmpfilename}/report");
-                }
-
                 string exportfileid = null;
                 // submit for exporting
                 using (WebClient wc = new WebClient())
