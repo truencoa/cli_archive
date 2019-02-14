@@ -12,6 +12,8 @@ The CLI accepts the following arguments as: truencoa.exe filename id key [url] [
 * key (required) - the API key or account password
 * url (optional) - the API endpoint URL - defaults to https://app.truencoa.com/api (production) or https://app.testing.truencoa.com/api (testing)
 * download (optional) - automatically download the processed file - defaults to false, no file will be downloaded, when set to true, the file will be downloaded and you will be charged automatically
+* suppress (optional) - automatically suppress all previously exported data from the current export - NOTE: the download argument must be set when using this argument
+* charge - automatically charge my saved card if there are not enough credits available - NOTE: this will only charge your card for one credit at a time.  You will receive an email with your receipt.
 
 `Example: truencoa.exe "d:\myfile.txt" "email@address.com" "Password123$" "https://app.testing.truencoa.com/api/" false`
 
