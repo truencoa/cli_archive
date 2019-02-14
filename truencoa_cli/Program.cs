@@ -8,7 +8,6 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 
 namespace truencoa_cli
@@ -31,6 +30,9 @@ namespace truencoa_cli
                 bool download = false;
                 string tmpfilename = null;
 
+                bool suppress = false;
+                bool charge = false;
+
                 if (args.Length > 3)
                 {
                     if (args[3].Contains("http"))
@@ -49,6 +51,16 @@ namespace truencoa_cli
                     {
                         Boolean.TryParse(args[4], out download);
                     }
+                }
+
+                if (args.Length > 5)
+                {
+                        Boolean.TryParse(args[5], out suppress);
+                }
+
+                if (args.Length > 6)
+                {
+                    Boolean.TryParse(args[5], out charge);
                 }
 
                 // the filename could be a file and path to upload, or an existing file to process
@@ -113,7 +125,7 @@ namespace truencoa_cli
                             return;
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         Console.WriteLine($"Invalid filename: {tmpfilename}");
                         return;
@@ -157,7 +169,7 @@ namespace truencoa_cli
                     wc.Headers["user_name"] = id;
                     wc.Headers["password"] = key;
                     wc.Headers[HttpRequestHeader.ContentType] = "application/x-www-form-urlencoded";
-                    string json = wc.UploadString(url + $"files/{tmpfilename}", "PATCH", "status=export");
+                    string json = wc.UploadString(url + $"files/{tmpfilename}", "PATCH", $"status=export&suppress={suppress}");
                     file = new JavaScriptSerializer().Deserialize<File>(json);
                     exportfileid = file.Id;
                 }
@@ -181,34 +193,46 @@ namespace truencoa_cli
 
                 if (download)
                 {
-                    DataTable records = null;
-                    using (WebClient wc = new WebClient())
+
+                    int page = 1;
+                    int recordcount = 0;
+
+                    filename = $"{filename}.export.csv";
+
+                    if (System.IO.File.Exists(filename))
                     {
-                        //wc.Headers["api_id"] = id;
-                        //wc.Headers["api_key"] = key;
-                        wc.Headers["user_name"] = id;
-                        wc.Headers["password"] = key;
-                        //string json = wc.DownloadString(url + $"files/{exportfileid}/records?size={file.RecordCount}&start=1&end={file.RecordCount}");
-                        string json = wc.DownloadString(url + $"files/{exportfileid}/records");
-                        file = new JavaScriptSerializer().Deserialize<File>(json);
-                        // see comment below (public class File), file.Records is not being deserialized by default
-                        var obj = JObject.Parse(json);
-                        var recordsjson = (string)obj["Records"].ToString();
-                        records = (DataTable)JsonConvert.DeserializeObject(recordsjson, (typeof(DataTable)));
+                        System.IO.File.Delete(filename);
                     }
-                    StringBuilder sb = new StringBuilder();
-                    IEnumerable<string> columnNames = records.Columns.Cast<DataColumn>().Select(column => column.ColumnName);
-                    sb.AppendLine(string.Join(",", columnNames));
-                    foreach (DataRow row in records.Rows)
+
+                    using (StreamWriter sw = new StreamWriter(filename))
                     {
-                        IEnumerable<string> fields = row.ItemArray.Select(field => string.Concat("\"", field.ToString().Replace("\"", "\"\""), "\""));
-                        sb.AppendLine(string.Join(",", fields));
+                        while (page == 1 || (recordcount > 0))
+                        {
+                            using (WebClient wc = new WebClient())
+                            {
+                                //wc.Headers["api_id"] = id;
+                                //wc.Headers["api_key"] = key;
+                                wc.Headers["user_name"] = id;
+                                wc.Headers["password"] = key;
+                                string json = wc.DownloadString(url + $"files/{exportfileid}/records?page={page}&charge={charge}");
+                                var obj = JObject.Parse(json);
+                                var recordsjson = (string)obj["Records"].ToString();
+                                DataTable records = (DataTable)JsonConvert.DeserializeObject(recordsjson, (typeof(DataTable)));
+                                recordcount = records.Rows.Count;
+                                if (page == 1)
+                                {
+                                    IEnumerable<string> columnNames = records.Columns.Cast<DataColumn>().Select(column => column.ColumnName);
+                                    sw.WriteLine(string.Join(",", columnNames));
+                                }
+                                foreach (DataRow row in records.Rows)
+                                {
+                                    IEnumerable<string> fields = row.ItemArray.Select(field => string.Concat("\"", field.ToString().Replace("\"", "\"\""), "\""));
+                                    sw.WriteLine(string.Join(",", fields));
+                                }
+                            }
+                            page++;
+                        }
                     }
-                    if (System.IO.File.Exists($"{filename}.export.csv"))
-                    {
-                        System.IO.File.Delete($"{filename}.export.csv");
-                    }
-                    System.IO.File.WriteAllText($"{filename}.export.csv", sb.ToString());
                 }
             }
             catch (Exception ex)
