@@ -33,7 +33,7 @@ Optionally, you can include the following fields:
 * address_country_code - blank or 'US'
 
 ## Payment
-You will automatically be charged if the "download" parameter is set to true. If you do not have any credits available, the export file will not be downloaded. You can login to the app at the URL you submitted the file to in order to view your credits.
+You will automatically be charged if the "download" parameter is set to true. If you do not have any credits available, the export file will not be downloaded. You can login to the app at the URL you submitted the file to in order to view your credits and to save a credit card and enable automatic credit purchases.
 
 ## Output File
 The export file will be written back to the input file folder automatically with the same input file name with ".export.csv" added.
