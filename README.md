@@ -10,12 +10,15 @@ The CLI accepts the following arguments as: truencoa.exe filename id key [url] [
 * filename (required) - the fully qualified path and name to the input file (CSV, tab-delimited)
 * id (required) - the API id or account user name/email address
 * key (required) - the API key or account password
-* url (optional) - the API endpoint URL - defaults to https://app.truencoa.com/api (production) or https://app.testing.truencoa.com/api (testing)
+* url (optional) - the API endpoint URL - defaults to https://api.truencoa.com (production) or https://api.testing.truencoa.com (testing)
 * download (optional) - automatically download the processed file - defaults to false, no file will be downloaded, when set to true, the file will be downloaded and you will be charged automatically
 * suppress (optional) - automatically suppress all previously exported data from the current export - NOTE: the download argument must be set when using this argument
 * charge - automatically charge my saved card if there are not enough credits available - NOTE: you must have a saved card (entered in and saved throught the app). This will only charge your card for one credit at a time.  You will receive an email with your receipt.
 
-`Example: truencoa.exe "d:\myfile.txt" "email@address.com" "Password123$" "https://app.testing.truencoa.com/api/" false`
+### Examples
+
+* `Basic processing, no download: truencoa.exe "d:\myfile.txt" "email@address.com" "Password123$" "https://api.testing.truencoa.com/" false`
+* `Advanced processing, with download: truencoa.exe "d:\myfile.txt" "email@address.com" "Password123$" "https://api.testing.truencoa.com/" true`
 
 > NOTE: if you're using a batch (BAT) file to automate the process and store the command-line parameters, and your password contains a percent symbol (%), you need to add an additional percent symbol to make it work.
 
