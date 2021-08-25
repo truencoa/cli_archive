@@ -26,7 +26,7 @@ namespace truencoa_cli
                 string filename = args[0];
                 string id = args[1];
                 string key = args[2];
-                string url = "https://app.truencoa.com/api/";
+                string url = "https://api.truencoa.com/";
                 bool download = false;
                 string tmpfilename = null;
 
@@ -55,7 +55,7 @@ namespace truencoa_cli
 
                 if (args.Length > 5)
                 {
-                        Boolean.TryParse(args[5], out suppress);
+                    Boolean.TryParse(args[5], out suppress);
                 }
 
                 if (args.Length > 6)
@@ -231,6 +231,18 @@ namespace truencoa_cli
                                 }
                             }
                             page++;
+                        }
+                    }
+
+                    using (WebClient wc = new WebClient())
+                    {
+                        List<string> reports = new List<string>() { "ncoa", "cass" };
+                        foreach (string report in reports)
+                        {
+                            wc.Headers["user_name"] = id;
+                            wc.Headers["password"] = key;
+                            byte[] pdf=  wc.DownloadData(url + $"files/{tmpfilename}/reports?report_name={report}&format=pdf");
+                            System.IO.File.WriteAllBytes($"{filename}.{report}.pdf", pdf);
                         }
                     }
                 }
