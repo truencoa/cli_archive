@@ -17,8 +17,8 @@ The CLI accepts the following arguments as: truencoa.exe filename id key [url] [
 
 ### Examples
 
-* `Basic processing, no download: truencoa.exe "d:\myfile.txt" "email@address.com" "Password123$" "https://api.testing.truencoa.com/" false`
-* `Advanced processing, with download: truencoa.exe "d:\myfile.txt" "email@address.com" "Password123$" "https://api.testing.truencoa.com/" true`
+* Basic processing, no download: `truencoa.exe "d:\myfile.txt" "email@address.com" "Password123$" "https://api.testing.truencoa.com/" false`
+* Advanced processing, with download: `truencoa.exe "d:\myfile.txt" "email@address.com" "Password123$" "https://api.testing.truencoa.com/" true`
 
 > NOTE: if you're using a batch (BAT) file to automate the process and store the command-line parameters, and your password contains a percent symbol (%), you need to add an additional percent symbol to make it work.
 
